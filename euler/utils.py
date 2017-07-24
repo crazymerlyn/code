@@ -35,3 +35,12 @@ def phi(n):
 def is_prime(n):
     return n > 1 and all(n % i for i in range(2, int(n**0.5)+1))
 
+def is_prime2(n):
+    import random
+    if n < 2: return False
+    for i in range(10):
+        a = random.randint(1, n-1)
+        if pow(a, n-1, n) != 1:
+            return False
+    return True
+
