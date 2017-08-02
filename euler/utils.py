@@ -1,3 +1,6 @@
+def is_square(n):
+    return int(round(n**0.5))**2 == n
+
 def primes(n):
     isprime = [True for _ in range(n+1)]
     for i in range(2, n+1):
