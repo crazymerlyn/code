@@ -47,6 +47,49 @@ def is_prime2(n):
             return False
     return True
 
+def decimal_to_roman(n):
+    roman = {
+            1000: 'M',
+            900: 'CM',
+            500: 'D',
+            400: 'CD',
+            100: 'C',
+            90: 'XC',
+            50: 'L',
+            40: 'XL',
+            10: 'X',
+            9: 'IX',
+            5: 'V',
+            4: 'IV',
+            1: 'I'
+    }
+    res = ""
+    for d in sorted(roman.keys(), reverse=True):
+        if d > n: continue
+        res += roman[d] * (n // d)
+        n %= d
+    return res
+
+def roman_to_decimal(s):
+    decimal = {
+        'M': 1000,
+        'D': 500,
+        'C': 100,
+        'L': 50,
+        'X': 10,
+        'V': 5,
+        'I': 1
+    }
+    last = 0
+    n = 0
+    for c in s:
+        d = decimal[c]
+        if d > last:
+            n -= 2 * last
+        n += d
+        last = d
+    return n
+
 wheel = [2,4,2,4,6,2,6,4,2,4,6,6,2,6,4,2,6,4,6,8,4,2,4,2,
          4,8,6,4,6,2,4,6,2,6,6,4,2,4,6,2,6,4,2,4,2,10,2,10]
 wsize = 48
