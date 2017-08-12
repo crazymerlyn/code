@@ -1,6 +1,23 @@
 def is_square(n):
     return int(round(n**0.5))**2 == n
 
+def mat_mul(a, b):
+    res = [[0 for _ in b[0]] for _ in a]
+    for i in range(len(a)):
+        for j in range(len(b[0])):
+            res[i][j] = sum(a[i][k] * b[k][j] for k in range(len(b)))
+    return res
+
+def fib(n):
+    a = [[1, 1], [1, 0]]
+    res = [[1, 0], [0, 1]]
+    while n:
+        if n % 2:
+            res = mat_mul(res, a)
+        a = mat_mul(a, a)
+        n //= 2
+    return res[0][1]
+
 def primes(n):
     isprime = [True for _ in range(n+1)]
     for i in range(2, n+1):
