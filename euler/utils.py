@@ -1,6 +1,9 @@
 def is_square(n):
     return int(round(n**0.5))**2 == n
 
+def product(seq):
+    return reduce(lambda a,b:a*b, seq, 1)
+
 def mat_mul(a, b):
     res = [[0 for _ in b[0]] for _ in a]
     for i in range(len(a)):
@@ -18,18 +21,21 @@ def fib(n):
         n //= 2
     return res[0][1]
 
-def primes(n):
-    isprime = [True for _ in range(n+1)]
-    for i in range(2, n+1):
-        if not isprime[i]: continue
-        for j in range(i*i, n+1, i):
-            isprime[j] = False
+def primes(limit):
+    if limit >= 2:
+        yield 2
 
-    res = []
-    for i in range(2, n+1):
-        if isprime[i]: res.append(i)
-
-    return res
+    import array
+    from math import sqrt
+    isprime = array.array("B", b"\x01" * ((limit - 1) // 2))
+    sieveend = sqrt(limit)
+    for i in xrange(len(isprime)):
+        if isprime[i] == 1:
+            p = i * 2 + 3
+            yield p
+            if i <= sieveend:
+                for j in range((p * p - 3) >> 1, len(isprime), p):
+                    isprime[j] = 0
 
 def factorize(n):
     res = []
