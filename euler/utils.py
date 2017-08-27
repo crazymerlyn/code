@@ -4,6 +4,15 @@ def is_square(n):
 def product(seq):
     return reduce(lambda a,b:a*b, seq, 1)
 
+def comb(n, r):
+    if r > n//2: r = n - r
+    num = 1
+    denom = 1
+    for i in range(1, r+1):
+        num *= n - i + 1
+        denom *= i
+    return num // denom
+
 def mat_mul(a, b):
     res = [[0 for _ in b[0]] for _ in a]
     for i in range(len(a)):
