@@ -1,3 +1,11 @@
+def memoized(func):
+    cache = {}
+    def newfunc(*args):
+        if args not in cache:
+            cache[args] = func(*args)
+        return cache[args]
+    return newfunc
+
 def is_square(n):
     return int(round(n**0.5))**2 == n
 
