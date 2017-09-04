@@ -81,6 +81,9 @@ def phi(n):
         res *= prime ** power - prime ** (power-1)
     return res
 
+def catalan(n):
+    return comb(2*n, n) / (n + 1)
+
 def is_prime(n):
     return n > 1 and all(n % i for i in xrange(2, int(n**0.5)+1))
 
