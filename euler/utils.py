@@ -6,6 +6,9 @@ def memoized(func):
         return cache[args]
     return newfunc
 
+def factors_in_factorial(n, p):
+    return 0 if n < p else n//p + factors_in_factorial(n//p, p)
+
 def is_square(n):
     return int(round(n**0.5))**2 == n
 
