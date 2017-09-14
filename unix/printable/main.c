@@ -16,6 +16,7 @@ int printable(FILE* fp) {
 int main(int argc, char **argv) {
     int c;
     int reverse = 0;
+    int return_status = EXIT_SUCCESS;
     while ((c = getopt(argc, argv, "v")) != -1) {
         switch (c) {
         case 'v':
@@ -29,9 +30,10 @@ int main(int argc, char **argv) {
         FILE* fp = fopen(argv[i], "rb");
         if (fp == NULL) {
             perror(argv[i]);
+            return_status = EXIT_FAILURE;
             continue;
         }
         if (reverse ^ printable(fp)) printf("%s\n", argv[i]);
     }
-    return 0;
+    return return_status;
 }
