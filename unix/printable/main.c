@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <getopt.h>
 
 int printable(FILE* fp) {
     int c;
@@ -13,9 +14,24 @@ int printable(FILE* fp) {
 }
 
 int main(int argc, char **argv) {
-    for (int i = 1; i < argc; i++) {
+    int c;
+    int reverse = 0;
+    while ((c = getopt(argc, argv, "v")) != -1) {
+        switch (c) {
+        case 'v':
+            reverse = 1;
+            break;
+        default:
+            break;
+        }
+    }
+    for (int i = optind; i < argc; i++) {
         FILE* fp = fopen(argv[i], "rb");
-        if (printable(fp)) printf("%s\n", argv[i]);
+        if (fp == NULL) {
+            perror(argv[i]);
+            continue;
+        }
+        if (reverse ^ printable(fp)) printf("%s\n", argv[i]);
     }
     return 0;
 }
