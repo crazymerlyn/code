@@ -34,6 +34,7 @@ int main(int argc, char **argv) {
             continue;
         }
         if (reverse ^ printable(fp)) printf("%s\n", argv[i]);
+        fclose(fp);
     }
     return return_status;
 }
