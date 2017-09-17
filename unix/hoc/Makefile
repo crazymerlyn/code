@@ -11,5 +11,5 @@ run: build
 	./main
 
 clean:
-	rm -f main *.o
+	rm -f main *.o y.tab.c
 
