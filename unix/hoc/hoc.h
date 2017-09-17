@@ -21,7 +21,7 @@ extern Datum pop();
 typedef void (*Inst)(); /* machine instruction */
 #define STOP (Inst)0
 
-extern Inst prog[];
+extern Inst *prog;
 extern void eval(), add(), sub(), mul(), division(), mod(), negate(), power();
 extern void assign(), builtin(), varpush(), constpush(), print();
 extern void execerror(char *s, char *t);

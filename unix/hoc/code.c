@@ -10,7 +10,8 @@ static int stack_index;
 static int stack_size;
 
 #define NPROG 2000
-Inst prog[NPROG];           /* the machine */
+Inst *prog;                 /* the machine */
+static int prog_size;
 Inst *progp;                /* next free spot for code generation */
 Inst *pc;                   /* program counter during execution */
 
@@ -22,6 +23,13 @@ void initcode() {
         exit(1);
     }
     stack_index = 0;
+
+    prog_size = NPROG;
+    prog = malloc(prog_size * sizeof(Inst));
+    if (!prog) {
+        perror("can't allocate memory for program");
+        exit(1);
+    }
     progp = prog;
 }
 
@@ -47,8 +55,16 @@ Datum pop() {
 
 Inst *code(Inst f) {
     Inst *oprogp = progp;
-    if (progp >= &prog[NPROG])
-        execerror("program too big", NULL);
+    if (progp >= &prog[prog_size]) {
+        int new_size = prog_size * 2;
+        prog = realloc(prog, new_size * sizeof(Inst));
+        if (!prog) {
+            perror("can't allocate memory for program");
+            exit(1);
+        }
+        progp = &prog[prog_size];
+        prog_size = new_size;
+    }
     *progp++ = f;
     return oprogp;
 }
