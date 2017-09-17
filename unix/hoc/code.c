@@ -1,11 +1,13 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include "hoc.h"
 #include "y.tab.h"
 
 #define NSTACK 256
-static Datum stack[NSTACK]; /* the stack */
-static Datum *stackp;       /* next free spot on the stack */
+static Datum *stack; /* the stack */
+static int stack_index;
+static int stack_size;
 
 #define NPROG 2000
 Inst prog[NPROG];           /* the machine */
@@ -13,21 +15,34 @@ Inst *progp;                /* next free spot for code generation */
 Inst *pc;                   /* program counter during execution */
 
 void initcode() {
-    stackp = stack;
+    stack_size = NSTACK;
+    stack = malloc(stack_size * sizeof(Datum));
+    if (!stack) {
+        perror("can't allocate stack:");
+        exit(1);
+    }
+    stack_index = 0;
     progp = prog;
 }
 
 void push(Datum d) {
-    if (stackp >= &stack[NSTACK])
-        execerror("stack overflow", NULL);
+    if (stack_index >= stack_size) {
+        stack_size += stack_size;
+        stack = realloc(stack, stack_size * sizeof(Datum));
+        if (!stack) {
+            perror("can't allocate stack");
+            exit(1);
+        }
+    }
 
-    *stackp++ = d;
+    stack[stack_index] = d;
+    stack_index++;
 }
 
 Datum pop() {
-    if (stackp <= stack)
+    if (stack_index <= 0)
         execerror("stack underflow", NULL);
-    return *--stackp;
+    return stack[--stack_index];
 }
 
 Inst *code(Inst f) {
