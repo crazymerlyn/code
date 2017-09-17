@@ -1,15 +1,12 @@
 default: build
 
 
-build: y.tab.c
+build: hoc.o
 	gcc $< -o main -Wall -Wextra -Werror -pedantic -g -lm
-
-y.tab.c: hoc.y
-	yacc $<
 
 run: build
 	./main
 
 clean:
-	rm -f main *.o y.tab.c
+	rm -f main *.o
 
