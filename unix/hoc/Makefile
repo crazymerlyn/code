@@ -2,7 +2,7 @@ default: build
 
 
 build: y.tab.c
-	gcc $< -o main -Wall -Wextra -Werror -pedantic -g
+	gcc $< -o main -Wall -Wextra -Werror -pedantic -g -lm
 
 y.tab.c: hoc.y
 	yacc $<
