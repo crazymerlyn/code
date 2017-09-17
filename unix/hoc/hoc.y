@@ -1,13 +1,20 @@
 %{
 #include <stdio.h>
 #include <math.h>
-#define YYSTYPE double
+
+double mem[26];
 
 int yylex();
 void yyerror();
 %}
-
-%token NUMBER
+%union {         /* stack type */
+    double val; /* actual value */
+    int index; /* index into mem[] */
+}
+%token <val> NUMBER
+%token <index> VAR
+%type <val> expr
+%right '='
 %left '+' '-'
 %left '*' '/' '%'
 %left UNARYMINUS UNARYPLUS
@@ -16,8 +23,11 @@ void yyerror();
 list: /* nothing */
     | list '\n'
     | list expr '\n' { printf("\t%.8g\n", $2); }
+    | list error '\n' { yyerrok; }
     ;
 expr: NUMBER        { $$ = $1; }
+    | VAR           { $$ = mem[$1]; }
+    | VAR '=' expr  { $$ = mem[$1] = $3; }
     | '-' expr %prec UNARYMINUS { $$ = -$2; }
     | '+' expr %prec UNARYPLUS { $$ = $2; }
     | expr '+' expr { $$ = $1 + $3; }
@@ -50,8 +60,13 @@ int yylex() {
 
     if (c == '.' || isdigit(c)) {
         ungetc(c, stdin);
-        scanf("%lf", &yylval);
+        scanf("%lf", &yylval.val);
         return NUMBER;
+    }
+
+    if (islower(c)) {
+        yylval.index = c - 'a';
+        return VAR;
     }
     
     if (c == '\n') lineno++;
