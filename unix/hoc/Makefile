@@ -1,7 +1,7 @@
 default: build
 
 
-build: generate_header hoc.o symbol.o math.o init.o hoc.h
+build: generate_header hoc.o symbol.o code.o math.o init.o hoc.h
 	gcc *.o -o main -Wall -Wextra -Werror -pedantic -g -lm
 
 generate_header: hoc.y

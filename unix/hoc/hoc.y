@@ -4,17 +4,18 @@
 #include <math.h>
 #include <setjmp.h>
 extern double Pow(double a, double b);
+#define code2(c1, c2) do { code(c1); code(c2); } while (0);
+#define code3(c1, c2, c3) do { code(c1); code(c2); code(c3); } while (0);
 int yylex();
 void yyerror();
 void init();
 void execerror(char *s, char *t);
 %}
 %union {           /* stack type */
-    double val;   /* actual value */
     Symbol *sym; /* symbol table pointer */
+    Inst *inst; /* machine instruction */
 }
-%token <val> NUMBER
-%token <sym> VAR BLTIN UNDEF
+%token <sym> NUMBER VAR BLTIN UNDEF
 %type <val> expr assign
 %right '='
 %left '+' '-'
@@ -25,28 +26,25 @@ void execerror(char *s, char *t);
 
 list: /* nothing */
     | list '\n'
-    | list expr '\n' { printf("\t%.8g\n", $2); }
-    | list assign '\n' 
-    | list expr ';' { printf("\t%.8g\n", $2); }
+    | list expr '\n' { code2(print, STOP); return 1; }
+    | list assign '\n' { code2((Inst)pop, STOP); return 1; }
     | list error '\n' { yyerrok; }
     ;
-assign: VAR '=' expr { $$ = $1->u.val = $3; $1->type = VAR; }
+assign: VAR '=' expr { code3(varpush, (Inst)$1, assign); }
       ;
-expr: NUMBER        { $$ = $1; }
-    | VAR           { if ($1->type == UNDEF)
-                        execerror("undefined variable", $1->name);
-                      $$ = $1->u.val; }
+expr: NUMBER        { code2(constpush, (Inst)$1); }
+    | VAR           { code3(varpush, (Inst)$1, eval); }
     | assign
-    | BLTIN '(' expr ')' { $$ = ($1->u.ptr)($3); }
-    | '-' expr %prec UNARYMINUS { $$ = -$2; }
-    | '+' expr %prec UNARYPLUS { $$ = $2; }
-    | expr '+' expr { $$ = $1 + $3; }
-    | expr '-' expr { $$ = $1 - $3; }
-    | expr '*' expr { $$ = $1 * $3; }
-    | expr '/' expr { $$ = $1 / $3; }
-    | expr '%' expr { $$ = fmod($1 , $3); }
-    | expr '^' expr { $$ = Pow($1, $3); }
-    | '(' expr ')'  { $$ = $2; }
+    | BLTIN '(' expr ')' { code2(builtin, (Inst)$1->u.ptr); }
+    | '(' expr ')'  {}
+    | '-' expr %prec UNARYMINUS { code(negate); }
+    | '+' expr %prec UNARYPLUS { }
+    | expr '+' expr { code(add); }
+    | expr '-' expr { code(sub); }
+    | expr '*' expr { code(mul); }
+    | expr '/' expr { code(division); }
+    | expr '%' expr { code(mod); }
+    | expr '^' expr { code(power); }
     ;
 %%
 
@@ -61,7 +59,9 @@ int main(int argc, char **argv) {
     if (argc > 0) progname = argv[0];
     init();
     setjmp(begin);
-    yyparse();
+    for(initcode(); yyparse(); initcode()) {
+        execute(prog);
+    }
 }
 
 int yylex() {
@@ -72,8 +72,10 @@ int yylex() {
     if (c == EOF) return 0;
 
     if (c == '.' || isdigit(c)) {
+        double d;
         ungetc(c, stdin);
-        scanf("%lf", &yylval.val);
+        scanf("%lf", &d);
+        yylval.sym = install("", NUMBER, d);
         return NUMBER;
     }
 
