@@ -29,11 +29,24 @@ static struct {
     "abs", fabs,
 };
 
+static struct {
+    char *name;
+    int kval;
+} keywords[] = {
+    "if", IF,
+    "else", ELSE,
+    "while", WHILE,
+    "print", PRINT,
+};
+
 void init() {
     Symbol *s;
 
     for (int i = 0; i < sizeof(consts) / sizeof(consts[0]); i++) {
         install(consts[i].name, VAR, consts[i].cval);
+    }
+    for (int i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
+        install(keywords[i].name, keywords[i].kval, 0.0);
     }
     for (int i = 0; i < sizeof(builtins) / sizeof(builtins[0]); i++) {
         s = install(builtins[i].name, BLTIN, 0.0);

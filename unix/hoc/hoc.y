@@ -15,36 +15,75 @@ void execerror(char *s, char *t);
     Symbol *sym; /* symbol table pointer */
     Inst *inst; /* machine instruction */
 }
-%token <sym> NUMBER VAR BLTIN UNDEF
-%type <val> expr assign
+%token <sym> NUMBER VAR BLTIN UNDEF PRINT WHILE IF ELSE
+%type <inst> stmt expr assign stmtlist cond while if end
 %right '='
+%left OR
+%left AND
+%left GT GE LT LE EQ NE
 %left '+' '-'
 %left '*' '/' '%'
-%left UNARYMINUS UNARYPLUS
+%left UNARYMINUS UNARYPLUS NOT
 %right '^'
 %%
 
 list: /* nothing */
     | list '\n'
     | list expr '\n' { code2(print, STOP); return 1; }
+    | list stmt '\n' { code(STOP); return 1; }
     | list assign '\n' { code2((Inst)pop, STOP); return 1; }
     | list error '\n' { yyerrok; }
     ;
-assign: VAR '=' expr { code3(varpush, (Inst)$1, assign); }
+assign: VAR '=' expr { $$ = $3; code3(varpush, (Inst)$1, assign); }
       ;
-expr: NUMBER        { code2(constpush, (Inst)$1); }
-    | VAR           { code3(varpush, (Inst)$1, eval); }
+stmt: expr          { code((Inst)pop); }
+    | PRINT expr    { code(prexpr); $$ = $2; }
+    | while cond stmt end {
+                ($1)[1] = (Inst)$3;   /* Body of loop */
+                ($1)[2] = (Inst)$4; } /* End, If cond fails */
+    | if cond stmt end {
+                ($1)[1] = (Inst)$3;
+                ($1)[3] = (Inst)$4; }
+    | if cond stmt end ELSE stmt end {
+                ($1)[1] = (Inst)$3;
+                ($1)[2] = (Inst)$6;
+                ($1)[3] = (Inst)$7; }
+    | '{' stmtlist '}' { $$ = $2; }
+    ;
+cond: '(' expr ')' { code(STOP); $$ = $2; }
+    ;
+while: WHILE { $$ = code(whilecode); code2(STOP, STOP); }
+     ;
+if:    IF { $$ = code(ifcode); code3(STOP, STOP, STOP); }
+     ;
+end:   /* nothing */ { code(STOP); $$ = progp; }
+   ;
+stmtlist: /* nothing */ { $$ = progp; }
+        | stmtlist '\n'
+        | stmtlist stmt
+        ;
+expr: NUMBER        { $$ = code(constpush); code((Inst)$1); }
+    | VAR           { $$ = code(varpush); code2((Inst)$1, eval); }
     | assign
-    | BLTIN '(' expr ')' { code2(builtin, (Inst)$1->u.ptr); }
-    | '(' expr ')'  {}
-    | '-' expr %prec UNARYMINUS { code(negate); }
-    | '+' expr %prec UNARYPLUS { }
+    | BLTIN '(' expr ')' { $$ = $3; code2(builtin, (Inst)$1->u.ptr); }
+    | '(' expr ')'  { $$ = $2; }
+    | '-' expr %prec UNARYMINUS { $$ = $2; code(negate); }
+    | '+' expr %prec UNARYPLUS { $$ = $2; }
     | expr '+' expr { code(add); }
     | expr '-' expr { code(sub); }
     | expr '*' expr { code(mul); }
     | expr '/' expr { code(division); }
     | expr '%' expr { code(mod); }
     | expr '^' expr { code(power); }
+    | expr GT expr  { code(gt); }
+    | expr GE expr  { code(ge); }
+    | expr LT expr  { code(lt); }
+    | expr LE expr  { code(le); }
+    | expr EQ expr  { code(eq); }
+    | expr NE expr  { code(ne); }
+    | expr AND expr { code(and); }
+    | expr OR expr  { code(or); }
+    | NOT expr      { $$ = $2; code(not); }
     ;
 %%
 
@@ -62,6 +101,13 @@ int main(int argc, char **argv) {
     for(initcode(); yyparse(); initcode()) {
         execute(prog);
     }
+}
+
+int follow(int expect, int ifyes, int ifno) {
+    int c = getchar();
+    if (c == expect) return ifyes;
+    ungetc(c, stdin);
+    return ifno;
 }
 
 int yylex() {
@@ -98,6 +144,14 @@ int yylex() {
     }
     
     if (c == '\n') lineno++;
+    switch(c) {
+    case '>': return follow('=', GE, GT);
+    case '<': return follow('=', LE, LT);
+    case '=': return follow('=', EQ, '=');
+    case '!': return follow('=', NE, NOT);
+    case '|': return follow('|', OR, '|');
+    case '&': return follow('&', AND, '&');
+    }
     return c;
 }
 

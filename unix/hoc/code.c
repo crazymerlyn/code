@@ -134,6 +134,77 @@ void power() {
     push(d1);
 }
 
+void le() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val <= d2.val);
+    push(d1);
+}
+
+void lt() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val < d2.val);
+    push(d1);
+}
+
+void gt() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val > d2.val);
+    push(d1);
+}
+
+void ge() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val >= d2.val);
+    push(d1);
+}
+
+void ne() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val != d2.val);
+    push(d1);
+}
+
+void eq() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val == d2.val);
+    push(d1);
+}
+
+void and() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val && d2.val);
+    push(d1);
+}
+
+void or() {
+    Datum d1, d2;
+    d2 = pop();
+    d1 = pop();
+    d1.val = (double)(d1.val || d2.val);
+    push(d1);
+}
+
+void not() {
+    Datum d;
+    d = pop();
+    d.val = !d.val;
+    push(d);
+}
+
 void negate() {
     Datum d;
     d = pop();
@@ -163,10 +234,45 @@ void assign() {
     push(d2);
 }
 
+void whilecode() {
+    Datum d;
+    Inst *savepc = pc;
+
+    execute(savepc + 2); /* condition */
+    d = pop();
+    while (d.val) {
+        execute(*((Inst**) (savepc)));  /* body */
+        execute(savepc + 2);
+        d = pop();
+    }
+    pc = *((Inst **) (savepc + 1));
+}
+
+void ifcode() {
+    Datum d;
+    Inst *savepc = pc;
+
+    execute(savepc + 3); /* condition */
+    d = pop();
+    if (d.val) {
+        execute(*((Inst **)(savepc)));
+    } else if (*((Inst **)(savepc + 1))) {
+        execute(*((Inst **)(savepc + 1)));
+    }
+
+    pc = *((Inst **)(savepc + 2));
+}
+
 void print() {
     Datum d;
     d = pop();
     printf("\t%.8g\n", d.val);
+}
+
+void prexpr() {
+    Datum d;
+    d = pop();
+    printf("%.8g\n", d.val);
 }
 
 void builtin() {
