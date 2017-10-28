@@ -1,3 +1,5 @@
+from fractions import gcd
+
 # https://stackoverflow.com/a/9758173
 def egcd(a, b):
     if a == 0:
@@ -13,6 +15,9 @@ def modinv(a, m):
         raise Exception('modular inverse does not exist')
     else:
         return x % m
+
+def lcm(a, b):
+    return a * b / gcd(a, b)
 
 def memoized(func):
     cache = {}
