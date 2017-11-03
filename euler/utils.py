@@ -99,6 +99,12 @@ def factorize(n):
         res.append((n, 1))
     return res
 
+def chinese(A, N):
+    tot = 1
+    for n in N: tot *= n
+    N2 = [tot // n for n in N]
+    return sum(a * n2 * modinv(n2, n) for a, n2, n in zip(A, N2, N)) % tot
+
 def phi(n):
     res = 1
     for prime, power in factorize(n):
