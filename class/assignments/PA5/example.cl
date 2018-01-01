@@ -4,6 +4,8 @@
  *)
 
 class Main {
-  main():Int { 0 };
+  b: Int <- a;
+  a: Int <- b;
+  main():Main { new Main };
 };
 

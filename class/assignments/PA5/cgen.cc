@@ -834,6 +834,8 @@ void CgenClassTable::code()
 //                   - dispatch tables
 //
 
+  if (cgen_debug) cout << "coding prototype objects" << endl;
+
   if (cgen_debug) cout << "coding global text" << endl;
   code_global_text();
 
