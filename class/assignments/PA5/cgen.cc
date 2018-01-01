@@ -402,9 +402,7 @@ void StringEntry::code_def(ostream& s, int stringclasstag)
       << WORD;
 
 
- /***** Add dispatch information for class String ******/
-
-      s << endl;                                              // dispatch table
+      s << Str->get_string() << DISPTAB_SUFFIX << endl;
       s << WORD;  lensym->code_ref(s);  s << endl;            // string length
   emit_string_constant(s,str);                                // ascii string
   s << ALIGN;                                                 // align to word
@@ -444,9 +442,7 @@ void IntEntry::code_def(ostream &s, int intclasstag)
       << WORD << (DEFAULT_OBJFIELDS + INT_SLOTS) << endl  // object size
       << WORD; 
 
- /***** Add dispatch information for class Int ******/
-
-      s << endl;                                          // dispatch table
+      s << Int->get_string() << DISPTAB_SUFFIX << endl;
       s << WORD << str << endl;                           // integer value
 }
 
@@ -488,9 +484,7 @@ void BoolConst::code_def(ostream& s, int boolclasstag)
       << WORD << (DEFAULT_OBJFIELDS + BOOL_SLOTS) << endl   // object size
       << WORD;
 
- /***** Add dispatch information for class Bool ******/
-
-      s << endl;                                            // dispatch table
+      s << Bool->get_string() << DISPTAB_SUFFIX << endl;
       s << WORD << val << endl;                             // value (0 or 1)
 }
 
@@ -617,17 +611,45 @@ void CgenClassTable::code_constants()
 }
 
 
+void CgenClassTable::code_prototypes()
+{
+    for (auto p = nds; p; p = p->tl()) {
+        p->hd()->code_prototype(str);
+    }
+}
+
+void CgenClassTable::code_class_nametab()
+{
+    str << CLASSNAMETAB << ":" << endl;
+    for (auto p = nds; p; p = p->tl()) {
+        str << WORD;
+        stringtable.lookup_string(p->hd()->get_name()->get_string())->code_ref(str);
+        str << endl;
+    }
+}
+
+void CgenClassTable::code_dispatch_tables()
+{
+    for (auto p = nds; p; p = p->tl()) {
+        p->hd()->code_dispatch_table(str);
+    }
+}
+
+
 CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL) , str(s)
 {
-   stringclasstag = 0 /* Change to your String class tag here */;
-   intclasstag =    0 /* Change to your Int class tag here */;
-   boolclasstag =   0 /* Change to your Bool class tag here */;
-
    enterscope();
    if (cgen_debug) cout << "Building CgenClassTable" << endl;
    install_basic_classes();
    install_classes(classes);
+   set_tags();
+
+   stringclasstag = probe(Str)->get_tag();
+   intclasstag =    probe(Int)->get_tag();
+   boolclasstag =   probe(Bool)->get_tag();
+
    build_inheritance_tree();
+   build_dispatch_tables(root());
 
    code();
    exitscope();
@@ -775,6 +797,13 @@ void CgenClassTable::install_class(CgenNodeP nd)
   addid(name,nd);
 }
 
+void CgenClassTable::set_tags() {
+    auto p = nds;
+    for(int i = 0; p; p = p->tl(), i++) {
+        p->hd()->set_tag(i);
+    }
+}
+
 void CgenClassTable::install_classes(Classes cs)
 {
   for(int i = cs->first(); cs->more(i); i = cs->next(i))
@@ -788,6 +817,13 @@ void CgenClassTable::build_inheritance_tree()
 {
   for(List<CgenNode> *l = nds; l; l = l->tl())
       set_relations(l->hd());
+}
+
+void CgenClassTable::build_dispatch_tables(CgenNodeP nd)
+{
+    nd->build_dispatch_table();
+    for(List<CgenNode> *l = nd->get_children(); l; l = l->tl())
+      build_dispatch_tables(l->hd());
 }
 
 //
@@ -816,6 +852,80 @@ void CgenNode::set_parentnd(CgenNodeP p)
 }
 
 
+void CgenNode::set_tag(int tag) {
+    this->tag = tag;
+}
+
+int CgenNode::get_tag() {
+    return this->tag;
+}
+
+int CgenNode::get_size() {
+    int s = 3;
+    for (int i = 0; i < features->len(); ++i) {
+        if (! features->nth(i)->is_method()) {
+            s += 1;
+        }
+    }
+    return s;
+}
+
+void CgenNode::code_prototype(ostream& str)
+{
+    emit_protobj_ref(get_name(), str);
+    str << ":" << endl;
+    str << WORD << get_tag() << endl;
+    str << WORD << get_size() << endl;
+    str << WORD;
+    emit_disptable_ref(get_name(), str);
+    str << endl;
+    for (int i = 0; i < features->len(); ++i) {
+        auto feature = features->nth(i);
+        if (!feature->is_method()) {
+            str << WORD;
+            auto ty = feature->get_type();
+            if (ty == Int) {
+                inttable.add_int(0)->code_ref(str);
+            } else if (ty == Bool) {
+                str << "bool_const0";
+            } else {
+                str << 0;
+            }
+            str << endl;
+        }
+    }
+}
+
+void CgenNode::build_dispatch_table()
+{
+    if (parentnd && parentnd != this) {
+        this->dispatch_names = parentnd->dispatch_names;
+        this->dispatch_pos = parentnd->dispatch_pos;
+    }
+    for (int i = 0; i < features->len(); ++i) {
+        auto feature = features->nth(i);
+        if (! feature->is_method()) continue;
+        auto name = feature->get_name();
+        auto disp_name = std::string(get_name()->get_string()) + "." + name->get_string();
+        if (dispatch_pos.find(name) != dispatch_pos.end()) {
+            dispatch_names[dispatch_pos[name]] = disp_name;
+        } else {
+            dispatch_pos[name] = dispatch_names.size();
+            dispatch_names.push_back(disp_name);
+        }
+    }
+}
+
+void CgenNode::code_dispatch_table(ostream& str)
+{
+    emit_disptable_ref(get_name(), str);
+    str << ":" << endl;
+    for (auto dispatch_name: dispatch_names) {
+        str << WORD << dispatch_name << endl;
+    }
+}
+
+
 
 void CgenClassTable::code()
 {
@@ -828,13 +938,14 @@ void CgenClassTable::code()
   if (cgen_debug) cout << "coding constants" << endl;
   code_constants();
 
-//                 Add your code to emit
-//                   - prototype objects
-//                   - class_nameTab
-//                   - dispatch tables
-//
+  if (cgen_debug) cout << "coding class name table" << endl;
+  code_class_nametab();
 
   if (cgen_debug) cout << "coding prototype objects" << endl;
+  code_prototypes();
+
+  if (cgen_debug) cout << "coding dispatch tables" << endl;
+  code_dispatch_tables();
 
   if (cgen_debug) cout << "coding global text" << endl;
   code_global_text();

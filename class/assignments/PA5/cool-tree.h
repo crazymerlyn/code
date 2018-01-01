@@ -49,6 +49,9 @@ class Feature_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Feature(); }
    virtual Feature copy_Feature() = 0;
+   virtual bool is_method() { return false; }
+   virtual Symbol get_type() = 0;
+   virtual Symbol get_name() = 0;
 
 #ifdef Feature_EXTRAS
    Feature_EXTRAS
@@ -186,6 +189,9 @@ public:
       expr = a4;
    }
    Feature copy_Feature();
+   virtual bool is_method() { return true; }
+   virtual Symbol get_type() { return return_type; }
+   virtual Symbol get_name() { return name; }
    void dump(ostream& stream, int n);
 
 #ifdef Feature_SHARED_EXTRAS
@@ -210,6 +216,9 @@ public:
       init = a3;
    }
    Feature copy_Feature();
+   virtual bool is_method() { return false; }
+   virtual Symbol get_type() { return type_decl; }
+   virtual Symbol get_name() { return name; }
    void dump(ostream& stream, int n);
 
 #ifdef Feature_SHARED_EXTRAS

@@ -1,5 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
+#include <vector>
+#include <map>
 #include "emit.h"
 #include "cool-tree.h"
 #include "symtab.h"
@@ -31,6 +33,9 @@ private:
    void code_bools(int);
    void code_select_gc();
    void code_constants();
+   void code_prototypes();
+   void code_class_nametab();
+   void code_dispatch_tables();
 
 // The following creates an inheritance graph from
 // a list of classes.  The graph is implemented as
@@ -40,7 +45,9 @@ private:
    void install_basic_classes();
    void install_class(CgenNodeP nd);
    void install_classes(Classes cs);
+   void set_tags();
    void build_inheritance_tree();
+   void build_dispatch_tables(CgenNodeP nd);
    void set_relations(CgenNodeP nd);
 public:
    CgenClassTable(Classes, ostream& str);
@@ -55,6 +62,9 @@ private:
    List<CgenNode> *children;                  // Children of class
    Basicness basic_status;                    // `Basic' if class is basic
                                               // `NotBasic' otherwise
+   int tag;
+   std::vector<std::string> dispatch_names;
+   std::map<Symbol, int> dispatch_pos;
 
 public:
    CgenNode(Class_ c,
@@ -64,6 +74,13 @@ public:
    void add_child(CgenNodeP child);
    List<CgenNode> *get_children() { return children; }
    void set_parentnd(CgenNodeP p);
+   void set_tag(int tag);
+   int get_tag();
+   int get_size();
+   void build_dispatch_table();
+   void code_prototype(ostream& stream);
+   void code_dispatch_table(ostream& stream);
+   void build_dispatch_table(ostream& stream);
    CgenNodeP get_parentnd() { return parentnd; }
    int basic() { return (basic_status == Basic); }
 };

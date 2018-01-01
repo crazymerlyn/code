@@ -4,8 +4,11 @@
  *)
 
 class Main {
-  b: Int <- a;
+  b: Int <- 45;
   a: Int <- b;
   main():Main { new Main };
 };
 
+class B {
+a: Bool;
+};
