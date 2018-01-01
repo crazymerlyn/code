@@ -6,7 +6,8 @@
 class Main {
   b: Int <- 45;
   a: Int <- b;
-  main():Main { new Main };
+  main():Int { f () };
+  f (): Int { let c: Int <- 4 in let d: Int <- c in d};
 };
 
 class B {

@@ -52,6 +52,7 @@ public:
    virtual bool is_method() { return false; }
    virtual Symbol get_type() = 0;
    virtual Symbol get_name() = 0;
+   virtual Expression get_expr() = 0;
 
 #ifdef Feature_EXTRAS
    Feature_EXTRAS
@@ -66,6 +67,7 @@ class Formal_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Formal(); }
    virtual Formal copy_Formal() = 0;
+   virtual Symbol get_name() = 0;
 
 #ifdef Formal_EXTRAS
    Formal_EXTRAS
@@ -192,6 +194,7 @@ public:
    virtual bool is_method() { return true; }
    virtual Symbol get_type() { return return_type; }
    virtual Symbol get_name() { return name; }
+   virtual Expression get_expr() { return expr; };
    void dump(ostream& stream, int n);
 
 #ifdef Feature_SHARED_EXTRAS
@@ -219,6 +222,7 @@ public:
    virtual bool is_method() { return false; }
    virtual Symbol get_type() { return type_decl; }
    virtual Symbol get_name() { return name; }
+   virtual Expression get_expr() { return init; }
    void dump(ostream& stream, int n);
 
 #ifdef Feature_SHARED_EXTRAS
@@ -241,6 +245,7 @@ public:
       type_decl = a2;
    }
    Formal copy_Formal();
+   virtual Symbol get_name() { return name; }
    void dump(ostream& stream, int n);
 
 #ifdef Formal_SHARED_EXTRAS

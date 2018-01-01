@@ -36,6 +36,8 @@ private:
    void code_prototypes();
    void code_class_nametab();
    void code_dispatch_tables();
+   void code_initializers();
+   void code_methods();
 
 // The following creates an inheritance graph from
 // a list of classes.  The graph is implemented as
@@ -65,6 +67,7 @@ private:
    int tag;
    std::vector<std::string> dispatch_names;
    std::map<Symbol, int> dispatch_pos;
+   std::vector<Symbol> attrs;
 
 public:
    CgenNode(Class_ c,
@@ -77,10 +80,14 @@ public:
    void set_tag(int tag);
    int get_tag();
    int get_size();
+   int get_attr_offset(Symbol attr);
+   bool is_basic() { return basic_status == Basic; }
    void build_dispatch_table();
    void code_prototype(ostream& stream);
    void code_dispatch_table(ostream& stream);
-   void build_dispatch_table(ostream& stream);
+   void code_initializer(ostream& stream);
+   void code_methods(ostream& stream);
+   Context get_context();
    CgenNodeP get_parentnd() { return parentnd; }
    int basic() { return (basic_status == Basic); }
 };
@@ -95,3 +102,34 @@ class BoolConst
   void code_ref(ostream&) const;
 };
 
+class Context {
+    private:
+    std::map<Symbol, std::pair<std::string, int>> mapping;
+    std::vector<Symbol> attrs;
+    Context* parent;
+    int stack_max;
+
+    public:
+    Context(std::vector<Symbol> attrs): attrs(attrs), parent(NULL) {};
+    Context(Context* parent, Formals formals): parent(parent) {
+        for (int i = 0; i < formals->len(); ++i) {
+            auto formal = formals->nth(i);
+            mapping[formal->get_name()] = std::make_pair(SP, i);
+        }
+    }
+    Context(Context* parent, Symbol name): parent(parent) {
+        mapping[name] = std::make_pair(SP, 0);
+    }
+    std::pair<std::string, int> get_mapping(Symbol name, int top=0) {
+        if (mapping.find(name) != mapping.end()) {
+            auto res = mapping[name];
+            res.second += top;
+            return res;
+        }
+        if (parent) return parent->get_mapping(name, top + mapping.size());
+        for (size_t i = 0; i < attrs.size(); ++i) {
+            if (attrs[i] == name) return std::make_pair(SELF, i + DEFAULT_OBJFIELDS);
+        }
+        assert(false);
+    }
+};

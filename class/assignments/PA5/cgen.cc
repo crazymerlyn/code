@@ -155,7 +155,7 @@ void program_class::cgen(ostream &os)
 //
 //////////////////////////////////////////////////////////////////////////////
 
-static void emit_load(char *dest_reg, int offset, char *source_reg, ostream& s)
+static void emit_load(char *dest_reg, int offset, const char *source_reg, ostream& s)
 {
   s << LW << dest_reg << " " << offset * WORD_SIZE << "(" << source_reg << ")" 
     << endl;
@@ -238,6 +238,23 @@ static void emit_gc_assign(ostream& s)
 
 static void emit_disptable_ref(Symbol sym, ostream& s)
 {  s << sym << DISPTAB_SUFFIX; }
+
+static void emit_method_start(ostream& s) {
+    emit_addiu(SP, SP, -12, s);
+    emit_store(FP, 3, SP, s);
+    emit_store(SELF, 2, SP, s);
+    emit_store(RA, 1, SP, s);
+    emit_addiu(FP, SP, 4, s);
+    emit_move(SELF, ACC, s);
+}
+
+static void emit_method_end(ostream& s) {
+    emit_load(FP, 3, SP, s);
+    emit_load(SELF, 2, SP, s);
+    emit_load(RA, 1, SP, s);
+    emit_addiu(SP, SP, 12, s);
+    emit_return(s);
+}
 
 static void emit_init_ref(Symbol sym, ostream& s)
 { s << sym << CLASSINIT_SUFFIX; }
@@ -635,6 +652,21 @@ void CgenClassTable::code_dispatch_tables()
     }
 }
 
+void CgenClassTable::code_initializers()
+{
+    for (auto p = nds; p; p = p->tl()) {
+        p->hd()->code_initializer(str);
+    }
+}
+
+
+void CgenClassTable::code_methods()
+{
+    for (auto p = nds; p; p = p->tl()) {
+        if (! p->hd()->is_basic()) p->hd()->code_methods(str);
+    }
+}
+
 
 CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL) , str(s)
 {
@@ -870,6 +902,16 @@ int CgenNode::get_size() {
     return s;
 }
 
+int CgenNode::get_attr_offset(Symbol attr) {
+    for (unsigned int i = 0; i < attrs.size(); ++i) {
+        if (attrs[i] == attr) {
+            return i;
+        }
+    }
+    assert(false);
+    return -1;
+}
+
 void CgenNode::code_prototype(ostream& str)
 {
     emit_protobj_ref(get_name(), str);
@@ -887,7 +929,7 @@ void CgenNode::code_prototype(ostream& str)
             if (ty == Int) {
                 inttable.add_int(0)->code_ref(str);
             } else if (ty == Bool) {
-                str << "bool_const0";
+                falsebool.code_ref(str);
             } else {
                 str << 0;
             }
@@ -901,17 +943,21 @@ void CgenNode::build_dispatch_table()
     if (parentnd && parentnd != this) {
         this->dispatch_names = parentnd->dispatch_names;
         this->dispatch_pos = parentnd->dispatch_pos;
+        this->attrs = parentnd->attrs;
     }
     for (int i = 0; i < features->len(); ++i) {
         auto feature = features->nth(i);
-        if (! feature->is_method()) continue;
-        auto name = feature->get_name();
-        auto disp_name = std::string(get_name()->get_string()) + "." + name->get_string();
-        if (dispatch_pos.find(name) != dispatch_pos.end()) {
-            dispatch_names[dispatch_pos[name]] = disp_name;
+        if (feature->is_method()) {
+            auto name = feature->get_name();
+            auto disp_name = std::string(get_name()->get_string()) + "." + name->get_string();
+            if (dispatch_pos.find(name) != dispatch_pos.end()) {
+                dispatch_names[dispatch_pos[name]] = disp_name;
+            } else {
+                dispatch_pos[name] = dispatch_names.size();
+                dispatch_names.push_back(disp_name);
+            }
         } else {
-            dispatch_pos[name] = dispatch_names.size();
-            dispatch_names.push_back(disp_name);
+            this->attrs.push_back(feature->get_name());
         }
     }
 }
@@ -925,6 +971,48 @@ void CgenNode::code_dispatch_table(ostream& str)
     }
 }
 
+Context CgenNode::get_context() {
+    return Context(attrs);
+}
+
+void CgenNode::code_initializer(ostream& str)
+{
+    emit_init_ref(get_name(), str);
+    str << ":" << endl;
+    emit_method_start(str);
+    if (get_name() != Object) {
+        str << JAL;
+        emit_init_ref(parentnd->get_name(), str);
+        str << endl;
+    }
+    for (int i = 0; i < features->len(); ++i) {
+        auto feature = features->nth(i);
+        auto ctx = this->get_context();
+        if (! feature->is_method()) {
+            auto expr = feature->get_expr();
+            expr->code(ctx, str);
+            int offset = get_attr_offset(feature->get_name());
+            emit_store(ACC, offset+DEFAULT_OBJFIELDS, SELF, str);
+        }
+    }
+    emit_move(ACC, SELF, str);
+    emit_method_end(str);
+}
+
+
+void CgenNode::code_methods(ostream& str)
+{
+    for (int i = 0; i < features->len(); ++i) {
+        auto feature = features->nth(i);
+        if (! feature->is_method()) continue;
+        emit_method_ref(get_name(), feature->get_name(), str);
+        str << ":" << endl;
+        emit_method_start(str);
+        auto ctx = get_context();
+        feature->get_expr()->code(ctx, str);
+        emit_method_end(str);
+    }
+}
 
 
 void CgenClassTable::code()
@@ -954,6 +1042,12 @@ void CgenClassTable::code()
 //                   - object initializer
 //                   - the class methods
 //                   - etc...
+
+  if (cgen_debug) cout << "coding initializers" << endl;
+  code_initializers();
+
+  if (cgen_debug) cout << "coding methods" << endl;
+  code_methods();
 
 }
 
@@ -990,58 +1084,58 @@ CgenNode::CgenNode(Class_ nd, Basicness bstatus, CgenClassTableP ct) :
 //
 //*****************************************************************
 
-void assign_class::code(ostream &s) {
+void assign_class::code(Context& ctx, ostream &s) {
 }
 
-void static_dispatch_class::code(ostream &s) {
+void static_dispatch_class::code(Context& ctx, ostream &s) {
 }
 
-void dispatch_class::code(ostream &s) {
+void dispatch_class::code(Context& ctx, ostream &s) {
 }
 
-void cond_class::code(ostream &s) {
+void cond_class::code(Context& ctx, ostream &s) {
 }
 
-void loop_class::code(ostream &s) {
+void loop_class::code(Context& ctx, ostream &s) {
 }
 
-void typcase_class::code(ostream &s) {
+void typcase_class::code(Context& ctx, ostream &s) {
 }
 
-void block_class::code(ostream &s) {
+void block_class::code(Context& ctx, ostream &s) {
 }
 
-void let_class::code(ostream &s) {
+void let_class::code(Context& ctx, ostream &s) {
 }
 
-void plus_class::code(ostream &s) {
+void plus_class::code(Context& ctx, ostream &s) {
 }
 
-void sub_class::code(ostream &s) {
+void sub_class::code(Context& ctx, ostream &s) {
 }
 
-void mul_class::code(ostream &s) {
+void mul_class::code(Context& ctx, ostream &s) {
 }
 
-void divide_class::code(ostream &s) {
+void divide_class::code(Context& ctx, ostream &s) {
 }
 
-void neg_class::code(ostream &s) {
+void neg_class::code(Context& ctx, ostream &s) {
 }
 
-void lt_class::code(ostream &s) {
+void lt_class::code(Context& ctx, ostream &s) {
 }
 
-void eq_class::code(ostream &s) {
+void eq_class::code(Context& ctx, ostream &s) {
 }
 
-void leq_class::code(ostream &s) {
+void leq_class::code(Context& ctx, ostream &s) {
 }
 
-void comp_class::code(ostream &s) {
+void comp_class::code(Context& ctx, ostream &s) {
 }
 
-void int_const_class::code(ostream& s)  
+void int_const_class::code(Context& ctx, ostream& s)  
 {
   //
   // Need to be sure we have an IntEntry *, not an arbitrary Symbol
@@ -1049,26 +1143,27 @@ void int_const_class::code(ostream& s)
   emit_load_int(ACC,inttable.lookup_string(token->get_string()),s);
 }
 
-void string_const_class::code(ostream& s)
+void string_const_class::code(Context& ctx, ostream& s)
 {
   emit_load_string(ACC,stringtable.lookup_string(token->get_string()),s);
 }
 
-void bool_const_class::code(ostream& s)
+void bool_const_class::code(Context& ctx, ostream& s)
 {
   emit_load_bool(ACC, BoolConst(val), s);
 }
 
-void new__class::code(ostream &s) {
+void new__class::code(Context& ctx, ostream &s) {
 }
 
-void isvoid_class::code(ostream &s) {
+void isvoid_class::code(Context& ctx, ostream &s) {
 }
 
-void no_expr_class::code(ostream &s) {
+void no_expr_class::code(Context& ctx, ostream &s) {
 }
 
-void object_class::code(ostream &s) {
+void object_class::code(Context& ctx, ostream &s) {
+    auto mapping = ctx.get_mapping(name);
+    emit_load(ACC,mapping.second, mapping.first.c_str(), s);
 }
-
 
