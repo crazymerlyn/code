@@ -35,6 +35,7 @@ private:
    void code_constants();
    void code_prototypes();
    void code_class_nametab();
+   void code_class_objtab();
    void code_dispatch_tables();
    void code_initializers();
    void code_methods();
@@ -81,9 +82,11 @@ public:
    int get_tag();
    int get_size();
    int get_attr_offset(Symbol attr);
+   int get_dispatch_offset(Symbol method_name);
    bool is_basic() { return basic_status == Basic; }
    void build_dispatch_table();
    void code_prototype(ostream& stream);
+   void code_attributes(ostream& stream);
    void code_dispatch_table(ostream& stream);
    void code_initializer(ostream& stream);
    void code_methods(ostream& stream);
@@ -105,31 +108,34 @@ class BoolConst
 class Context {
     private:
     std::map<Symbol, std::pair<std::string, int>> mapping;
-    std::vector<Symbol> attrs;
     Context* parent;
+    CgenNodeP nd;
     int stack_max;
+    int count;
 
     public:
-    Context(std::vector<Symbol> attrs): attrs(attrs), parent(NULL) {};
-    Context(Context* parent, Formals formals): parent(parent) {
+    Context(CgenNodeP nd): parent(NULL), nd(nd), stack_max(0), count(0) {};
+    Context(Context* parent, Formals formals): parent(parent), nd(parent->nd), stack_max(parent->stack_max), count(0) {
         for (int i = 0; i < formals->len(); ++i) {
             auto formal = formals->nth(i);
-            mapping[formal->get_name()] = std::make_pair(SP, i);
+            mapping[formal->get_name()] = std::make_pair(FP, -i - 3);
         }
+        stack_max += parent->count;
     }
-    Context(Context* parent, Symbol name): parent(parent) {
-        mapping[name] = std::make_pair(SP, 0);
+    Context(Context* parent, Symbol name): parent(parent), nd(parent->nd), stack_max(parent->stack_max), count(1) {
+        mapping[name] = std::make_pair(FP, 1);
+        stack_max += parent->count;
     }
-    std::pair<std::string, int> get_mapping(Symbol name, int top=0) {
+    std::pair<std::string, int> get_mapping(Symbol name) {
         if (mapping.find(name) != mapping.end()) {
             auto res = mapping[name];
-            res.second += top;
+            res.second += stack_max;
+            res.second = -res.second;
             return res;
         }
-        if (parent) return parent->get_mapping(name, top + mapping.size());
-        for (size_t i = 0; i < attrs.size(); ++i) {
-            if (attrs[i] == name) return std::make_pair(SELF, i + DEFAULT_OBJFIELDS);
-        }
-        assert(false);
+        if (parent) return parent->get_mapping(name);
+        return std::make_pair(SELF, nd->get_attr_offset(name) + DEFAULT_OBJFIELDS);
     }
+
+    CgenNodeP get_node() { return nd; }
 };

@@ -3,13 +3,6 @@
     as possible.
  *)
 
-class Main {
-  b: Int <- 45;
-  a: Int <- b;
-  main():Int { f () };
-  f (): Int { let c: Int <- 4 in let d: Int <- c in d};
-};
-
-class B {
-a: Bool;
+class Main inherits IO {
+  main():Object { let a: Int <- 2 in { a <- 3; out_int(a); } };
 };
