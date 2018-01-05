@@ -1273,7 +1273,7 @@ void typcase_class::code(Context& ctx, ostream &s) {
         emit_blti(T1, nd->get_tag(), label, s);
         emit_bgti(T1, nd->get_final_tag(), label, s);
         emit_push(ACC, s);
-        auto newctx = Context(&ctx, nd->get_name());
+        auto newctx = Context(&ctx, c->get_name());
         c->get_expr()->code(newctx, s);
         emit_addiu(SP, SP, 4, s);
         emit_branch(end, s);
@@ -1397,8 +1397,11 @@ void eq_class::code(Context& ctx, ostream &s) {
     emit_pop(T1, s);
     emit_move(T2, ACC, s);
     emit_load_bool(ACC, truebool, s);
+    int label = get_label_no();
+    emit_beq(T1, T2, label, s);
     emit_load_bool(A1, falsebool, s);
     emit_jal("equality_test", s);
+    emit_label_def(label, s);
 }
 
 void leq_class::code(Context& ctx, ostream &s) {
