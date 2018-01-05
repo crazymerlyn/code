@@ -4,5 +4,11 @@
  *)
 
 class Main inherits IO {
-  main():Object { let a: Int <- 2 in { a <- 3; out_int(a); } };
+  main():Object {
+        while 3 < 10 loop {
+out_int (1);
+out_string ("\n");
+abort ();
+} pool
+};
 };

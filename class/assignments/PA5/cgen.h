@@ -23,6 +23,7 @@ private:
    int stringclasstag;
    int intclasstag;
    int boolclasstag;
+   int current_tag;
 
 
 // The following methods emit code for
@@ -48,7 +49,7 @@ private:
    void install_basic_classes();
    void install_class(CgenNodeP nd);
    void install_classes(Classes cs);
-   void set_tags();
+   void set_tags(CgenNodeP nd);
    void build_inheritance_tree();
    void build_dispatch_tables(CgenNodeP nd);
    void set_relations(CgenNodeP nd);
@@ -66,9 +67,11 @@ private:
    Basicness basic_status;                    // `Basic' if class is basic
                                               // `NotBasic' otherwise
    int tag;
+   int final_tag;
    std::vector<std::string> dispatch_names;
    std::map<Symbol, int> dispatch_pos;
    std::vector<Symbol> attrs;
+   int depth;
 
 public:
    CgenNode(Class_ c,
@@ -79,7 +82,9 @@ public:
    List<CgenNode> *get_children() { return children; }
    void set_parentnd(CgenNodeP p);
    void set_tag(int tag);
+   void set_final_tag(int tag) { final_tag = tag; }
    int get_tag();
+   int get_final_tag() { return final_tag; }
    int get_size();
    int get_attr_offset(Symbol attr);
    int get_dispatch_offset(Symbol method_name);
@@ -118,7 +123,7 @@ class Context {
     Context(Context* parent, Formals formals): parent(parent), nd(parent->nd), stack_max(parent->stack_max), count(0) {
         for (int i = 0; i < formals->len(); ++i) {
             auto formal = formals->nth(i);
-            mapping[formal->get_name()] = std::make_pair(FP, -i - 3);
+            mapping[formal->get_name()] = std::make_pair(FP, i - formals->len() +1 - 3);
         }
         stack_max += parent->count;
     }

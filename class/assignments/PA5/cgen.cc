@@ -24,6 +24,7 @@
 
 #include "cgen.h"
 #include "cgen_gc.h"
+#include <algorithm>
 
 extern void emit_string_constant(ostream& str, char *s);
 extern int cgen_debug;
@@ -654,23 +655,31 @@ void CgenClassTable::code_prototypes()
 
 void CgenClassTable::code_class_nametab()
 {
-    str << CLASSNAMETAB << ":" << endl;
+    std::vector<CgenNodeP> nodes(current_tag);
     for (auto p = nds; p; p = p->tl()) {
+        nodes[p->hd()->get_tag()] = p->hd();
+    }
+    str << CLASSNAMETAB << ":" << endl;
+    for (auto p: nodes) {
         str << WORD;
-        stringtable.lookup_string(p->hd()->get_name()->get_string())->code_ref(str);
+        stringtable.lookup_string(p->get_name()->get_string())->code_ref(str);
         str << endl;
     }
 }
 
 void CgenClassTable::code_class_objtab()
 {
+    std::vector<CgenNodeP> nodes(current_tag);
     str << CLASSOBJTAB << ":" << endl;
     for (auto p = nds; p; p = p->tl()) {
+        nodes[p->hd()->get_tag()] = p->hd();
+    }
+    for (auto nd: nodes) {
         str << WORD;
-        emit_protobj_ref(p->hd()->get_name(), str);
+        emit_protobj_ref(nd->get_name(), str);
         str << endl;
         str << WORD;
-        emit_init_ref(p->hd()->get_name(), str);
+        emit_init_ref(nd->get_name(), str);
         str << endl;
     }
 }
@@ -704,13 +713,16 @@ CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL) , str(s)
    if (cgen_debug) cout << "Building CgenClassTable" << endl;
    install_basic_classes();
    install_classes(classes);
-   set_tags();
+
+   build_inheritance_tree();
+
+   current_tag = 0;
+   set_tags(root());
 
    stringclasstag = probe(Str)->get_tag();
    intclasstag =    probe(Int)->get_tag();
    boolclasstag =   probe(Bool)->get_tag();
 
-   build_inheritance_tree();
    build_dispatch_tables(root());
 
    classtable = this;
@@ -860,11 +872,13 @@ void CgenClassTable::install_class(CgenNodeP nd)
   addid(name,nd);
 }
 
-void CgenClassTable::set_tags() {
-    auto p = nds;
-    for(int i = 0; p; p = p->tl(), i++) {
-        p->hd()->set_tag(i);
+void CgenClassTable::set_tags(CgenNodeP nd) {
+    nd->set_tag(current_tag);
+    current_tag += 1;
+    for (auto p = nd->get_children(); p; p = p->tl()) {
+        set_tags(p->hd());
     }
+    nd->set_final_tag(current_tag - 1);
 }
 
 void CgenClassTable::install_classes(Classes cs)
@@ -992,6 +1006,7 @@ void CgenNode::build_dispatch_table()
         this->dispatch_names = parentnd->dispatch_names;
         this->dispatch_pos = parentnd->dispatch_pos;
         this->attrs = parentnd->attrs;
+        this->depth = parentnd->depth + 1;
     }
     for (int i = 0; i < features->len(); ++i) {
         auto feature = features->nth(i);
@@ -1156,7 +1171,7 @@ void static_dispatch_class::code(Context& ctx, ostream &s) {
     for (int i = 0; i < actual->len(); ++i) {
         auto expr = actual->nth(i);
         expr->code(ctx, s);
-        emit_store(ACC, i+1, SP, s);
+        emit_store(ACC, actual->len() - i, SP, s);
     }
     expr->code(ctx, s);
     int label = get_label_no();
@@ -1190,7 +1205,8 @@ void dispatch_class::code(Context& ctx, ostream &s) {
     for (int i = 0; i < actual->len(); ++i) {
         auto expr = actual->nth(i);
         expr->code(ctx, s);
-        emit_store(ACC, i+1, SP, s);
+        //emit_store(ACC, i+1, SP, s);
+        emit_store(ACC, actual->len() - i, SP, s);
     }
     expr->code(ctx, s);
     int label = get_label_no();
@@ -1220,9 +1236,51 @@ void cond_class::code(Context& ctx, ostream &s) {
 }
 
 void loop_class::code(Context& ctx, ostream &s) {
+    int begin = get_label_no();
+    int end = get_label_no();
+    s << "# Loop condition begin:" << endl;
+    emit_label_def(begin, s);
+    pred->code(ctx, s);
+    emit_load(ACC, DEFAULT_OBJFIELDS, ACC, s);
+    emit_beqz(ACC, end, s);
+    s << "# Loop condition end:" << endl;
+    body->code(ctx, s);
+    emit_branch(begin, s);
+    emit_label_def(end, s);
 }
 
 void typcase_class::code(Context& ctx, ostream &s) {
+    expr->code(ctx, s);
+    std::vector<Case> cs;
+    for (int i = 0; i < cases->len(); ++i) {
+        cs.push_back(cases->nth(i));
+    }
+    std::sort(cs.begin(), cs.end(), [] (Case a, Case b) -> bool {
+            return classtable->probe(a->get_type())->get_tag() > classtable->probe(b->get_type())->get_tag();
+    });
+    int label = get_label_no();
+    emit_bne(ACC, ZERO, label, s);
+    emit_load_string(ACC, stringtable.add_string(classtable->probe(Main)->get_filename()->get_string()), s);
+    emit_load_imm(T1, 1, s);
+    emit_jal("_case_abort2", s);
+    s << "# Start of cases" << endl;
+    emit_label_def(label, s);
+    emit_load(T1, 0, ACC, s);
+    int end = get_label_no();
+    for (auto c: cs) {
+        label = get_label_no();
+        auto nd = classtable->probe(c->get_type());
+        emit_blti(T1, nd->get_tag(), label, s);
+        emit_bgti(T1, nd->get_final_tag(), label, s);
+        emit_push(ACC, s);
+        auto newctx = Context(&ctx, nd->get_name());
+        c->get_expr()->code(newctx, s);
+        emit_addiu(SP, SP, 4, s);
+        emit_branch(end, s);
+        emit_label_def(label, s);
+    }
+    emit_jal("_case_abort", s);
+    emit_label_def(end, s);
 }
 
 void block_class::code(Context& ctx, ostream &s) {
@@ -1323,6 +1381,8 @@ void lt_class::code(Context& ctx, ostream &s) {
 
     int label = get_label_no();
     emit_load_address(T1, "bool_const1", s);
+    emit_fetch_int(T2, T2, s);
+    emit_fetch_int(ACC, ACC, s);
     emit_blt(T2, ACC, label, s);
     emit_load_address(T1, "bool_const0", s);
     emit_label_def(label, s);
@@ -1349,6 +1409,8 @@ void leq_class::code(Context& ctx, ostream &s) {
     emit_pop(T2, s);
 
     int label = get_label_no();
+    emit_fetch_int(ACC, ACC, s);
+    emit_fetch_int(T2, T2, s);
     emit_load_address(T1, "bool_const0", s);
     emit_blt(ACC, T2, label, s);
     emit_load_address(T1, "bool_const1", s);
