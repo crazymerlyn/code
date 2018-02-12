@@ -32,11 +32,12 @@ def decrypt_cbc(key, txt):
         iv = txt[i:i+16]
     return "".join(res)
 
-data = None
-with open("10.txt") as f:
-    data = f.read().decode('base64')
+if __name__ == '__main__':
+    data = None
+    with open("10.txt") as f:
+        data = f.read().decode('base64')
 
-key = "YELLOW SUBMARINE"
+    key = "YELLOW SUBMARINE"
 
-print(decrypt_cbc("YELLOW SUBMARINE", data))
+    print(decrypt_cbc("YELLOW SUBMARINE", data))
 
