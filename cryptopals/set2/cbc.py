@@ -24,7 +24,6 @@ def encrypt_cbc(key, txt):
 def decrypt_cbc(key, txt):
     iv = "\00" * 16
     res = []
-    print(len(txt))
     for i in range(0, len(txt), 16):
         dec = decrypt_aes128(key, txt[i:i+16])
         val = xor(iv, dec)
