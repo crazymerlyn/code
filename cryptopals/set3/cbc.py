@@ -31,12 +31,26 @@ def decrypt_cbc(key, txt):
         iv = txt[i:i+16]
     return "".join(res)
 
+def little_endian(count):
+    res = []
+    while count:
+        res.append(chr(count % 256))
+        count //= 256
+    left = 8 - len(res)
+    res += [chr(0)] * left
+    return "".join(res)
+
+def encrypt_ctr(key, nonce, txt):
+    length = len(txt) // 16 + 1
+    key = "".join(encrypt_aes128(key, little_endian(nonce) + little_endian(count)) for count in range(length))
+    return xor(key, txt)
+
+def decrypt_ctr(key, nonce, txt):
+    length = len(txt) // 16 + 1
+    key = "".join(encrypt_aes128(key, little_endian(nonce) + little_endian(count)) for count in range(length))
+    return xor(key, txt)
+
 if __name__ == '__main__':
-    data = None
-    with open("10.txt") as f:
-        data = f.read().decode('base64')
-
-    key = "YELLOW SUBMARINE"
-
-    print(decrypt_cbc("YELLOW SUBMARINE", data))
+    data = "L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ==".decode('base64')
+    print(decrypt_ctr("YELLOW SUBMARINE", 0, data))
 
