@@ -16,6 +16,11 @@ def continued_to_improper(gauss):
         res = n + 1 / res
     return res
 
+def continued_to_latex(gauss):
+    if len(gauss) == 1: return str(gauss[0])
+    return "%d + \cfrac{1}{%s}" % (gauss[0], continued_to_latex(gauss[1:]))
+
 print(improper_to_continued(Fraction(45, 16)))
 print(continued_to_improper([2, 1, 7]))
 print(continued_to_improper([2, 2, 1, 1]))
+print(continued_to_latex([2, 2, 1, 1]))
