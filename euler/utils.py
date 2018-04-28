@@ -45,20 +45,23 @@ def comb(n, r):
         denom *= i
     return num // denom
 
-def mat_mul(a, b):
+def mat_mul(a, b, mod):
     res = [[0 for _ in b[0]] for _ in a]
     for i in range(len(a)):
         for j in range(len(b[0])):
-            res[i][j] = sum(a[i][k] * b[k][j] for k in range(len(b)))
+            if mod:
+                res[i][j] = sum(a[i][k] * b[k][j] for k in range(len(b))) % mod
+            else:
+                res[i][j] = sum(a[i][k] * b[k][j] for k in range(len(b)))
     return res
 
-def fib(n):
+def fib(n, mod=None):
     a = [[1, 1], [1, 0]]
     res = [[1, 0], [0, 1]]
     while n:
         if n % 2:
-            res = mat_mul(res, a)
-        a = mat_mul(a, a)
+            res = mat_mul(res, a, mod)
+        a = mat_mul(a, a, mod)
         n //= 2
     return res[0][1]
 
