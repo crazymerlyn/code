@@ -1,4 +1,4 @@
-from fractions import gcd
+from math import gcd
 
 # https://stackoverflow.com/a/9758173
 def egcd(a, b):
