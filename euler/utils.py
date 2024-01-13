@@ -73,7 +73,7 @@ def primes(limit):
     from math import sqrt
     isprime = array.array("B", b"\x01" * ((limit - 1) // 2))
     sieveend = sqrt(limit)
-    for i in xrange(len(isprime)):
+    for i in range(len(isprime)):
         if isprime[i] == 1:
             p = i * 2 + 3
             yield p
@@ -118,7 +118,7 @@ def catalan(n):
     return comb(2*n, n) / (n + 1)
 
 def is_prime(n):
-    return n > 1 and all(n % i for i in xrange(2, int(n**0.5)+1))
+    return n > 1 and all(n % i for i in range(2, int(n**0.5)+1))
 
 def is_prime2(n):
     import random
