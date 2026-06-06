@@ -1,7 +1,5 @@
-res = 0
+total = 0
 for a in range(3, 1001):
-    m = 2
-    for n in range(1, a+1):
-        m = max(m, 2*n*a % (a*a))
-    res += m
-print res
+    # max remainder for (a-1)^n + (a+1)^n mod a^2
+    total += 2 * a * ((a - 1) // 2)
+print(total)

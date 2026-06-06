@@ -1,11 +1,7 @@
-dp = [[0 for _ in range(101)] for _ in range(101)]
-
-dp[0] = [1 for _ in range(101)]
-
-for n in range(1, 101):
-    dp[n][1] = 1
-    for j in range(2, n+1):
-        dp[n][j] = dp[n-j][j] + dp[n][j-1]
-    for j in range(n+1, 101):
-        dp[n][j] = dp[n][n]
-print dp[100][100] -1
+LIMIT = 100
+ways = [0] * (LIMIT + 1)
+ways[0] = 1
+for i in range(1, LIMIT):
+    for j in range(i, LIMIT + 1):
+        ways[j] += ways[j - i]
+print(ways[LIMIT])

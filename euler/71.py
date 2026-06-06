@@ -1,12 +1,7 @@
-from fractions import gcd, Fraction
-
-m = Fraction(0, 1)
-
-for i in range(2, 1000001):
-    if i % 7 ==0: continue
-    numerator = (3 * i) / 7
-    if gcd(numerator, i) == 1 and Fraction(numerator, i) > m:
-        m = Fraction(numerator, i)
-
-print m
-
+LIMIT = 1000000
+a, b = 0, 1
+for q in range(2, LIMIT + 1):
+    p = (3 * q - 1) // 7
+    if a * q < b * p:
+        a, b = p, q
+print(a)

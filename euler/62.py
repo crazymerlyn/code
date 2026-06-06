@@ -1,10 +1,12 @@
 from collections import defaultdict
 
-n = 10000
-d = defaultdict(list)
-for i in range(1, n):
-    d["".join(sorted(str(i * i * i)))].append(i)
-
-for item in d.items():
-    if len(item[1]) == 5:
-        print(item)
+cubes = defaultdict(list)
+n = 1
+while True:
+    cube = n ** 3
+    key = ''.join(sorted(str(cube)))
+    cubes[key].append(cube)
+    if len(cubes[key]) == 5:
+        print(cubes[key][0])
+        break
+    n += 1

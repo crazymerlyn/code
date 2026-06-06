@@ -1,6 +1,8 @@
 count = 0
-for i in range(1, 10):
-    for j in range(1, 100):
-        if 10 ** (j-1) <= i ** j < 10 ** j:
+for n in range(1, 100):
+    for k in range(1, 100):
+        if len(str(n**k)) == k:
             count += 1
-print count
+        elif len(str(n**k)) < k:
+            break
+print(count)

@@ -1,20 +1,25 @@
-end = [0 for _ in range(10000001)]
+LIMIT = 10000000
 
-end[1] = 1
-end[89] = 89
+def sq_sum(n):
+    s = 0
+    while n:
+        s += (n % 10) ** 2
+        n //= 10
+    return s
 
-def sq_dig_sum(n):
-    return sum(int(d)**2 for d in str(n))
+ends = {1: 1, 89: 89}
+count = 0
 
-for i in range(2, 10000001):
-    n = sq_dig_sum(i)
-    to_update = [i]
-    while not end[n]:
-        to_update.append(n)
-        n = sq_dig_sum(n)
+for n in range(1, LIMIT):
+    chain = []
+    x = n
+    while x not in ends:
+        chain.append(x)
+        x = sq_sum(x)
+    end = ends[x]
+    for c in chain:
+        ends[c] = end
+    if end == 89:
+        count += 1
 
-    for j in to_update:
-        end[j] = end[n]
-
-print sum(x == 89 for x in end)
-
+print(count)

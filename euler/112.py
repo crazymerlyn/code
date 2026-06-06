@@ -1,23 +1,15 @@
 def is_bouncy(n):
-    last = n % 10
-    n //= 10
-    inc, dec = False, False
-    while n:
-        d = n % 10
-        n //= 10
-        if last > d:
-            dec = True
-        elif last < d:
-            inc = True
-        if inc and dec:
-            return True
-        last = d
-    return inc and dec
+    s = str(n)
+    inc = all(s[i] <= s[i+1] for i in range(len(s)-1))
+    dec = all(s[i] >= s[i+1] for i in range(len(s)-1))
+    return not inc and not dec
 
 count = 0
-for n in xrange(1, 10**7):
-    if is_bouncy(n): count += 1
+n = 1
+while True:
+    if is_bouncy(n):
+        count += 1
     if count * 100 == 99 * n:
-        print n
+        print(n)
         break
-
+    n += 1
